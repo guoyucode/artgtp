@@ -1,120 +1,10 @@
-use std::{
-    thread,
-};
+use slint::{LogicalPosition, private_unstable_api::re_exports::PointerEventKind, Weak};
 
-slint::slint! {
-    import { SpinBox, Button, CheckBox, Slider, LineEdit, ScrollView, ListView,
-        HorizontalBox, VerticalBox, GridBox, StandardButton } from "std-widgets.slint";
-    import { HorizontalBox, VerticalBox, ListView, StandardListView, GroupBox } from "std-widgets.slint";
-
-    export component HelloWorld inherits Window {
-        title: "ArtGPT";
-        min-width: 500px;
-        min-height: 600px;
-
-        // preferred-width: 700px;
-        // preferred-height: 800px;
-
-        callback popup_confirmed;
-        callback show_confirm_popup;
-        show_confirm_popup => { confirm_popup.show(); }
-
-        HorizontalBox {   
-            vertical-stretch: 1;
-            GroupBox {  
-                title: "会话列表";
-                width: 20%;
-                ListView {  
-                    width: 95%;
-                    vertical-stretch: 0;
-                    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : HorizontalBox {
-                    Image {
-                            width: 15px;
-                    }
-                    Text {
-                            text: "Item " + i;
-                    }
-                    }
-                }
-            }
-
-            GroupBox {  
-                title: "聊天窗口";
-                vertical-stretch: 0;
-
-                // 水平布局
-                // HorizontalLayout
-                VerticalLayout{
-                    alignment: center;
-
-                    StandardListView {
-                        width: 90%;
-                        height:  root.height - 180px;
-                        model: [
-                            {text: "Lorem"}, {text: "ipsum"},{text: "dolor"},{text: "sit"},{text: "amet"},{text: "consetetur"},
-                            {text: "Lorem"}, {text: "ipsum"},{text: "dolor"},{text: "sit"},{text: "amet"},{text: "consetetur"},
-                            {text: "Lorem"}, {text: "ipsum"},{text: "dolor"},{text: "sit"},{text: "amet"},{text: "consetetur"},
-                            {text: "Lorem"}, {text: "ipsum"},{text: "dolor"},{text: "sit"},{text: "amet"},{text: "consetetur"},
-                            {text: "Lorem"}, {text: "ipsum"},{text: "dolor"},{text: "sit"},{text: "amet"},{text: "consetetur"},
-                            {text: "Lorem"}, {text: "ipsum"},{text: "dolor"},{text: "sit"},{text: "amet"},{text: "consetetur"},
-                            {text: "Lorem"}, {text: "ipsum"},{text: "dolor"},{text: "sit"},{text: "amet"},{text: "consetetur"},
-                        ];
-                    }
-
-                    HorizontalLayout {
-                        padding-top: 12px;
-                        height: 20%;
-                        
-                        TextInput {
-                            width: 80%;
-                            height: root.height - 220px;
-                            text: " At vero eos eor a clsum dolor sit amet.";
-                            // 边框
-                            // border-width: 1px;
-                            // border-color: black;
-                        }
-
-                        Button {
-                            padding-left: 10px;
-                            width: 18%;
-                            height: 50px;
-                            text: "发送";
-                            clicked => { root.show_confirm_popup(); }
-                        }
-                    }
-                }
-            }
-        }
-
-        
-
-        confirm_popup := PopupWindow {
-            x: 40px;
-            y: 100px;
-            height: 100px;
-            width: root.width - 80px;
-            Rectangle {
-                background: root.background;
-                border-color: confirm_popup_text.color;
-                border-width: 2px;
-            }
-            confirm_popup_layout := Dialog {
-                height:100%; width: 100%;
-                confirm_popup_text := Text {
-                    text: "发送消息?";
-                    wrap: word-wrap;
-                }
-                StandardButton { kind: yes; clicked => { root.popup_confirmed(); } }
-                StandardButton { kind: no; }
-            }
-        }
-
-
-    }
-}
+slint::include_modules!();
 
 fn main() {
-    let main_window = HelloWorld::new().unwrap();
+    let main_window = Main::new().unwrap();
+    
 
     let weak_window = main_window.as_weak();
     main_window.on_popup_confirmed(move || {
@@ -122,11 +12,68 @@ fn main() {
         window.hide().unwrap();
     });
 
-    println!("run");
+    handle_window_resize(main_window.as_weak());
+    
+    main_window.run().unwrap();
+}
 
-    // 隐藏之后，过几秒再次显示
-    loop {
-        main_window.run().unwrap();
-        thread::sleep(std::time::Duration::from_secs(3));
-    }
+/// 处理鼠标移动和缩放窗口
+fn handle_window_resize(handle: Weak<Main>){
+    let main_window = match handle.upgrade(){
+        Some(main) => main,
+        None => return
+    };
+
+    let handle1 = handle.clone();
+    main_window.on_exit(move ||{
+        let app = match handle1.upgrade(){
+            None => return,
+            Some(v) => v
+        };
+        let _ = app.window().hide();
+    });
+
+    main_window.on_drag_area_mouse_event(move |_pos, ev, mouse_x, mouse_y|{
+        let app = match handle.upgrade(){
+            None => return,
+            Some(v) => v
+        };
+        app.set_drag_area_pressed(ev.kind == PointerEventKind::Down);
+        app.set_drag_area_down_x(mouse_x);
+        app.set_drag_area_down_y(mouse_y);
+    });
+    
+    let handle = main_window.as_weak();
+    main_window.on_drag_area_mouse_move(move |pos, mouse_x, mouse_y|{
+        let app = match handle.upgrade(){
+            None => return,
+            Some(v) => v
+        };
+        let pressed_x = app.get_drag_area_down_x();
+        let pressed_y = app.get_drag_area_down_y();
+        if app.get_drag_area_pressed() && pressed_x != mouse_x && pressed_y != mouse_y{
+            let main_window = app.window();
+            if pos == 0{
+                //拖动窗口
+                let logical_pos = main_window.position().to_logical(main_window.scale_factor());
+                main_window.set_position(LogicalPosition::new(logical_pos.x + (mouse_x - pressed_x), logical_pos.y + (mouse_y - pressed_y)));
+            }else{
+                let mut logical_size = main_window.size().to_logical(main_window.scale_factor());
+                if pos == 1{
+                    //右边缩放窗口
+                    logical_size.width = logical_size.width + (mouse_x - pressed_x);
+                }else if pos == 2{
+                    //右边缩放窗口
+                    logical_size.width = logical_size.width + (mouse_x - pressed_x);
+                    logical_size.height = logical_size.height + (mouse_y - pressed_y);
+                }else if pos == 3{
+                    //下边缩放窗口
+                    logical_size.height = logical_size.height + (mouse_y - pressed_y);
+                }
+                logical_size.width = logical_size.width.max(300.);
+                logical_size.height = logical_size.height.max(300.);
+                main_window.set_size(logical_size);
+            }
+        }
+    });
 }

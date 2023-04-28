@@ -1,0 +1,462 @@
+import { SpinBox, Button, CheckBox, Slider, ScrollView, ListView,
+    HorizontalBox, VerticalBox, GridBox, StandardButton } from "std-widgets.slint";
+import { HorizontalBox, VerticalBox, StandardListView, GroupBox } from "std-widgets.slint";
+import { ListView } from "listview.slint";
+import { LineEdit } from "lineedit.slint";
+
+export component Main inherits Window {
+    title: "ArtGPT";
+    icon: @image-url("../assets/favicon.png");
+    background: #222a35;
+    no-frame: true;
+    min-width: 500px;
+    min-height: 600px;
+
+    preferred-width: 800px;
+    preferred-height: 600px;
+
+    in-out property <int> current-tab-position;
+    
+    in-out property <bool> drag-area-pressed;
+    in-out property <length> drag-area-down-x;
+    in-out property <length> drag-area-down-y;
+    callback drag-area-mouse-move(int, length, length);
+    callback drag-area-mouse-event(int, PointerEvent, length, length);
+    callback exit();
+
+    callback popup_confirmed;
+    callback show_confirm_popup;
+    
+    show_confirm_popup => { confirm_popup.show(); }
+
+    // 关闭按钮
+    HorizontalLayout {
+        z: 1000;
+        alignment: end;
+        padding-right: 10px;
+        padding-top: 10px;
+        btn-close-rect := Rectangle {
+            width: 15px;
+            height: 15px;
+            border-radius: 2px;
+            background: btn-close-touch.has-hover? rgba(255, 255, 255, 0.2): transparent;
+            btn-close-icon := Image {
+                width: 10px;
+                height: 10px;
+                source: @image-url("../assets/icon-close.png");
+            }
+            btn-close-touch := TouchArea {
+                clicked => { exit() }
+            }
+        }
+    }
+
+    // 顶部拖动
+    title-area := Rectangle {
+        z: 999;
+        x: 0;
+        y: 0;
+        width: 100%;
+        height: 50px;
+        background: transparent;
+        touch := TouchArea{
+            width: 100%;
+            height: 100%;
+            moved => {
+                drag-area-mouse-move(0, touch.mouse-x, touch.mouse-y);
+            }
+            pointer-event(ev) => {
+                drag-area-mouse-event(0, ev, touch.mouse-x, touch.mouse-y);
+            }
+        }
+        states [ 
+            press when touch.pressed: {
+                
+            }
+         ]
+    }
+    // 右边缩放区域
+    HorizontalLayout {
+        z: 999;
+        x: 0;
+        y: 0;
+        height: 100%;
+        width: 100%;
+        alignment: end;
+        padding-bottom: 6px;
+        right-resize-area := Rectangle{
+            height: 100%;
+            width: 6px;
+            background: transparent;
+            touch1 := TouchArea {
+                mouse-cursor: col-resize;
+                moved => {
+                    drag-area-mouse-move(1, touch1.mouse-x, touch1.mouse-y);
+                }
+                pointer-event(ev) => {
+                    drag-area-mouse-event(1, ev, touch1.mouse-x, touch1.mouse-y);
+                }
+            }
+        }
+    }
+    // 右下角缩放区域
+    HorizontalLayout {
+        z: 999;
+        x: 0;
+        y: 0;
+        height: 100%;
+        width: 100%;
+        alignment: end;
+        VerticalLayout {
+            height: 100%;
+            alignment: end;
+            right-bottom-resize-area := Rectangle{
+                height: 10px;
+                width: 10px;
+                background: transparent;
+                touch3 := TouchArea {
+                    mouse-cursor: nw-resize;
+                    moved => {
+                        drag-area-mouse-move(2, touch3.mouse-x, touch3.mouse-y);
+                    }
+                    pointer-event(ev) => {
+                        drag-area-mouse-event(2, ev, touch3.mouse-x, touch3.mouse-y);
+                    }
+                }
+            }
+        }
+    }
+    // 下边缩放区域
+    VerticalLayout {
+        x: 0;
+        y: 0;
+        height: 100%;
+        width: 100%;
+        alignment: end;
+        padding-right: 6px;
+        bottom-resize-area := Rectangle{
+            height: 6px;
+            width: 100%;
+            background: transparent;
+            touch2 := TouchArea {
+                mouse-cursor: row-resize;
+                moved => {
+                    drag-area-mouse-move(3, touch2.mouse-x, touch2.mouse-y);
+                }
+                pointer-event(ev) => {
+                    drag-area-mouse-event(3, ev, touch2.mouse-x, touch2.mouse-y);
+                }
+            }
+        }
+    }
+
+    HorizontalBox {
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        VerticalLayout {
+            width: 180px;
+            padding-right: -8px;
+            //左上角icon区域
+            HorizontalBox {
+                height: 54px;
+                VerticalLayout {
+                    alignment: center;
+                    Image {
+                        width: 26px;
+                        height: 26px;
+                        source: @image-url("../assets/favicon-32px.png");
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Text {
+                        text: "ArtGPT";
+                        color: white;
+                        font-size: 12px;
+                        font-weight: 600;
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Image {
+                        width: 14px;
+                        height: 14px;
+                        source: @image-url("../assets/icon-setting-14px.png");
+                    }
+                }
+            }
+            //搜索框
+            Rectangle {
+                z: 20;
+                height: 32px;
+                background: #222a35;
+                HorizontalLayout {
+                    alignment: center;
+                    Rectangle {
+                        border-radius: 13px;
+                        width: 80%;
+                        height: 26px;
+                        background: #010007;
+                        HorizontalBox {
+                            Image {
+                                width: 12px;
+                                height: 12px;
+                                source: @image-url("../assets/icon-search-12px.png");
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                Text {
+                                    text: "Search";
+                                    font-size: 10px;
+                                    color: #424250;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Rectangle {
+                ListView {
+                    width: 100%;
+                    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : Rectangle {
+                        background: i==root.current-tab-position? #151823 : transparent;
+                        HorizontalBox {
+                            padding-left: 14px;
+                            Image {
+                                source: i==root.current-tab-position? @image-url("../assets/icon-qa-orange.png") : @image-url("../assets/icon-qa-gray.png");
+                                width: 20px;
+                            }
+                            VerticalBox {
+                                Text {
+                                    color: i==root.current-tab-position? #eef0f4 : #b7b5bf;
+                                    text: "如何编写一个ArtGPT?";
+                                    font-size: 11px;
+                                }
+                                Text {
+                                    color: i==root.current-tab-position? #3b3b47 : #676775;
+                                    text: "2023-04-28 20:21";
+                                    font-size: 10px;
+                                }
+                            }
+                        }
+                        TouchArea {
+                            width: 100%;
+                            height: 100%;
+                            clicked => {
+                                root.current-tab-position = i;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            background: #151823;
+            GroupBox {
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                vertical-stretch: 0;
+    
+                VerticalLayout{
+                    width: 100%;
+                    //左上角icon区域
+                    Rectangle {
+                        z: 30;
+                        background: #151823;
+                        HorizontalBox {
+                            padding-top: -10px;
+                            padding-left: 26px;
+                            height: 54px;
+                            VerticalLayout {
+                                alignment: center;
+                                Text {
+                                    text: "聊天：如何用Rust如何编写一个ArtGTP？";
+                                    color: #edeef5;
+                                    font-size: 13px;
+                                }
+                                HorizontalBox {
+                                    padding-left: 0;
+                                    Text {
+                                        text: "2023-04-28 16:46:00";
+                                        color: #7d8088;
+                                        font-size: 11px;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    VerticalBox {
+                        padding: 0;
+                        Rectangle {
+                            padding: 0;
+                            VerticalBox {
+                                ListView {
+                                    width: 100%;
+                                    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : HorizontalBox {
+                                        padding-left: 0px;
+                                        padding-top: 0px;
+                                        padding-bottom: 0px;
+                                        padding-right: 0px;
+                                        Rectangle {
+                                            background: i==3? #151823 : transparent;
+
+                                            HorizontalBox {
+                                                if !(i==3 || i==1) : Rectangle {}
+                                                if !(i==3 || i==1) : Rectangle {
+                                                    Rectangle {
+                                                        x: 0;
+                                                        y: 0;
+                                                        HorizontalLayout {
+                                                            alignment: end;
+                                                            VerticalLayout {
+                                                                alignment: end;
+                                                                Rectangle {
+                                                                    width: 30px;
+                                                                    height: 30px;
+                                                                    background: #222635;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    background: #222635;
+                                                    border-radius: 32px;
+                                                    Text {
+                                                        color: #eef0f4;
+                                                        text: "  如何用Rust如何编写一个ArtGTP？";
+                                                    }
+                                                }
+                                                VerticalBox {
+                                                    Image {
+                                                        source: (i==3 || i==1) ? @image-url("../assets/icon_bulb.png") : @image-url("../assets/icon_user.png");
+                                                        width: 32px;
+                                                    }
+                                                    Text {
+                                                        color: #676775;
+                                                        text: "16:40 pm";
+                                                    }
+                                                }
+                                                if (i==3 || i==1) : Rectangle {
+                                                    Rectangle {
+                                                        x: 0;
+                                                        y: 0;
+                                                        VerticalLayout {
+                                                            alignment: end;
+                                                            Rectangle {
+                                                                width: 30px;
+                                                                height: 30px;
+                                                                background: #6a75f3;
+                                                            }
+                                                        }
+                                                    }
+                                                    background: #6a75f3;
+                                                    border-radius: 32px;
+                                                    Text {
+                                                        color: #eef0f4;
+                                                        text: "\n  Slint 是一个 Rust 编写的综合性 UI 工具包， \n \n  用于为桌面和嵌入式设备构建原生用户界面 。我们支持许多不同的目标平台，\n从嵌入式设备到桌面，包括移动和网络。 用户和开发人员都应该在每个平台上\n感到宾至如归。 外观和体验应该符合用户对本机应用程序的期望。\n\n";
+                                                    }
+                                                }
+                                                if i==3 || i==1 : Rectangle {}
+                                            }
+                                            
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // 输入框
+                        Rectangle {
+                            z: 20;
+                            height: 40px;
+                            HorizontalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    border-radius: 16px;
+                                    width: 80%;
+                                    height: 32px;
+                                    background: #010007;
+                                    HorizontalBox {
+                                        VerticalLayout {
+                                            padding-left: 10px;
+                                            alignment: center;
+                                            LineEdit {
+                                                height: 100%;
+                                                text: "";
+                                                font-size: 10px;
+                                                text-color: #eeeeee;
+                                                placeholder-text: "请输入您的提问";
+                                                placeholder-color: #39384a;
+                                                placeholder-font-size: 10px;
+                                            }
+                                        }
+                                    }
+                                    HorizontalLayout {
+                                        alignment: end;
+                                        VerticalLayout {
+                                            padding-right: 4px;
+                                            alignment: center;
+                                            button-send := Rectangle {
+                                                background: #17181f;
+                                                border-radius: 13px;
+                                                width: 26px;
+                                                height: 26px;
+                                                in-out property<bool> pressed;
+                                                button-send-touch := TouchArea {
+                                                    width: 100%;
+                                                    height: 100%;
+                                                    clicked => {
+                                                        root.show_confirm_popup();
+                                                    }
+                                                }
+                                                states [ 
+                                                    has-hover1 when button-send-touch.has-hover && button-send-touch.pressed : {
+                                                        background: #282934;
+                                                    }
+                                                    has-hover when button-send-touch.has-hover : {
+                                                        background: #373743;
+                                                        button-send-icon.source: @image-url("../assets/icon-send-dark.png");
+                                                    }
+                                                ]
+                                                button-send-icon := Image {
+                                                    width: 12px;
+                                                    height: 12px;
+                                                    source: @image-url("../assets/icon-send.png");
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    
+
+    confirm_popup := PopupWindow {
+        x: 40px;
+        y: 100px;
+        height: 100px;
+        width: root.width - 80px;
+        Rectangle {
+            background: root.background;
+            border-color: confirm_popup_text.color;
+            border-width: 2px;
+        }
+        confirm_popup_layout := Dialog {
+            height:100%; width: 100%;
+            confirm_popup_text := Text {
+                text: "发送消息?";
+                wrap: word-wrap;
+            }
+            StandardButton { kind: yes; clicked => { root.popup_confirmed(); } }
+            StandardButton { kind: no; }
+        }
+    }
+}
